@@ -106,7 +106,8 @@ Vue.component('play-sounds', {
 			soundList: [],
 			playSound: {
 				name: '',
-				src: ''
+				src: '',
+				type: 'url'
 			}
 		}
 	},
@@ -323,9 +324,9 @@ Vue.component('sound-box', {
 		}
 	},
 	template: `
-<div v-mouse:1000.click="click" v-mouse:1000.up="edition" v-mouse:1000.down="editing">
-	<header>{{sound.name}}</header>
+<div :class="{'sound-edit': edit}" v-mouse:1000.click="click" v-mouse:1000.up="edition" v-mouse:1000.down="editing" @mouseleave="edit=false;">
 	<div v-if="edit">Edit ?</div>
+	<header>{{sound.name}}</header>
 </div>
 	`
 });

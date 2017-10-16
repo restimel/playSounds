@@ -32,6 +32,14 @@ body {
 	box-shadow: 0 0 30px 5px #fdb851;
 }
 
+.sound-playing {
+	box-shadow: 0 0 20px 1px #fdb851, inset 0 0 30px 5px #fdb851;
+}
+
+.sound-edit {
+	background-color: #fdb851;
+}
+
 .sounds-container {
 	grid-area: main;
 	display: flex;
