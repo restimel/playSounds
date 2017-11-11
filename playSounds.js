@@ -25,6 +25,24 @@ const typeSound = {
 	}
 };
 
+function saveSounds(data) {
+	var json = JSON.stringify(data);
+
+	try {
+		localStorage.playSounds = json;
+	} catch(e) {
+		if (e.name === 'QuotaExceededError') {
+			notification.show('Maximum storage limit reached. Modifications are currently not saved in the browser.');
+		} else {
+			notification.show(e.message);
+		}
+	}
+}
+
+function getSounds() {
+	return JSON.parse(localStorage.playSounds || '[]');
+}
+
 Vue.directive('keys', {
 	bind: function(el, binding) {
 		window.addEventListener('keydown', binding.value);
@@ -103,7 +121,7 @@ Vue.directive('mouse', {
 Vue.component('play-sounds', {
 	data: function() {
 		return {
-			soundList: [],
+			soundList: getSounds(),
 			playSound: {
 				name: '',
 				src: '',
@@ -115,6 +133,9 @@ Vue.component('play-sounds', {
 		play: function(sound) {
 			this.playSound = sound;
 		}
+	},
+	watch: {
+		soundList: saveSounds
 	},
 	template: `
 <div class="play-sounds">
@@ -258,6 +279,12 @@ Vue.component('dialog-add-sound', {
 			this.$emit('close', this.sound);
 			notification.show('Sound ' + this.name + ' ' + action, 'success');
 		},
+		deleteSound: function(sound) {
+			var index = this.soundList.indexOf(sound);
+			this.soundList.splice(index, 1);
+			this.stopRecording();
+			this.$emit('close', this.sound);
+		},
 		onloadfile: function(evt) {
 			let file = evt.target.files[0];
 			let reader = new FileReader();
@@ -295,6 +322,7 @@ Vue.component('dialog-add-sound', {
 		<audio :src="src" controls></audio>
 		<footer>
 			<button class="btn-cancel" @click.prevent="cancel">Cancel</button>
+			<button class="btn-delete" @click.prevent="deleteSound" v-if="this.sound">Delete</button>
 			<button class="btn-save" @click.prevent="save">Save</button>
 		</footer>
 	</div>
@@ -302,7 +330,7 @@ Vue.component('dialog-add-sound', {
 	`
 });
 
-Vue.component('sound-box', {
+var box = Vue.component('sound-box', {
 	props: {
 		sound: typeSound
 	},
@@ -321,6 +349,9 @@ Vue.component('sound-box', {
 		},
 		editing: function() {
 			this.edit = true;
+		},
+		remove: function() {
+			this.$emit('remove', this.sound);
 		}
 	},
 	template: `
@@ -344,3 +375,20 @@ Vue.component('add-sound-box', {
 	`
 });
 
+Vue.component('sound-test', {
+	extends: box,
+	props: {
+		message: String
+	},
+	methods: {
+		editing: function() {
+			console.log('coucou')
+		}
+	},
+	template: `
+<div :class="{'sound-edit': edit}" v-mouse:1000.click="click" v-mouse:1000.up="edition" v-mouse:1000.down="editing" @mouseleave="edit=false;">
+	<div v-if="edit">Edit ?</div>
+	<header>{{message}}!!! {{sound.name}}</header>
+</div>
+	`
+});
