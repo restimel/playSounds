@@ -268,6 +268,7 @@ Vue.component('dialog-add-sound', {
 				this.sound.name = this.name;
 				this.sound.src = this.src;
 				this.type = this.type;
+				saveSounds(this.soundList);
 			} else {
 				action = 'added';
 				this.soundList.push({
