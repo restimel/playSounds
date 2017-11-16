@@ -182,7 +182,9 @@ Vue.component('sounds-container', {
 	props: ['soundList', 'playingSound'],
 	data: () => ({
 		displayDialog: false,
-		sound: null
+		sound: null,
+		dragIndex: -1,
+		dragOverIndex: -1
 	}),
 	methods: {
 		addSoundBox: function() {
@@ -195,19 +197,74 @@ Vue.component('sounds-container', {
 		},
 		playSound: function(sound) {
 			this.$emit('play', sound);
+		},
+		dragstart: function(sound) {
+			this.dragIndex = this.soundList.indexOf(sound);
+			this.dragOverIndex = this.dragIndex;
+		},
+		dragover: function(sound) {
+			var dragOverIndex = this.soundList.indexOf(sound);
+
+			if (dragOverIndex < 0) {
+				dragOverIndex = this.soundList.length;
+			}
+
+			this.dragOverIndex = dragOverIndex;
+		},
+		dragend: function() {
+			this.dragOverIndex = -1;
+			this.dragIndex = -1;
+		},
+		dropElement: function(sound) {
+			var snd = this.soundList.splice(this.dragIndex, 1);
+			var dragOverIndex = this.soundList.indexOf(sound);
+
+			if (dragOverIndex < 0) {
+				dragOverIndex = this.soundList.length;
+			}
+
+			this.soundList.splice(dragOverIndex, 0, ...snd);
+			this.dragOverIndex = this.soundList.indexOf(sound);
+
+			this.dragOverIndex = -1;
+			this.dragIndex = -1;
 		}
 	},
 	template: `
 <div class="sounds-container">
-	<sound-box
-		v-for="box of soundList"
-		:key="box.name"
-		:sound="box"
-		:class="{'sound-box': true, 'sound-playing': box === playingSound}"
-		@click="playSound"
-		@edit="editSound"
-	></sound-box>
-	<add-sound-box @click="addSoundBox" class="sound-box"></add-sound-box>
+	<template v-for="(box, index) of soundList">
+		<sound-drag
+			class="sound-box"
+			v-show="dragOverIndex === index"
+			:sound="box"
+			@drop="dropElement"
+		></sound-drag>
+		<sound-box
+			v-show="dragIndex !== index"
+			:key="box.name"
+			:sound="box"
+			:class="{'sound-box': true, 'sound-playing': box === playingSound}"
+			@click="playSound"
+			@edit="editSound"
+			@dragstart="dragstart"
+			@dragover="dragover"
+			@drop="dropElement"
+			@dragend="dragend"
+		></sound-box>
+	</template>
+	<transition name="fade">
+		<sound-drag
+			class="sound-box"
+			v-if="dragOverIndex === soundList.length"
+			@drop="dropElement"
+		></sound-drag>
+	</transition>
+	<add-sound-box
+		class="sound-box"
+		@click="addSoundBox"
+		@dragover="dragover"
+		@drop="dropElement"
+	></add-sound-box>
 	<dialog-add-sound v-if="displayDialog" :soundList="soundList" :sound="sound" @close="displayDialog=false"></dialog-add-sound>
 </div>
 	`
@@ -337,7 +394,8 @@ var box = Vue.component('sound-box', {
 	},
 	data: function() {
 		return {
-			edit: false
+			edit: false,
+			dragging: false
 		};
 	},
 	methods: {
@@ -353,43 +411,75 @@ var box = Vue.component('sound-box', {
 		},
 		remove: function() {
 			this.$emit('remove', this.sound);
+		},
+		drop: function(event) {
+			this.$emit('drop', this.sound);
+		},
+		dragover: function(event) {
+			this.$emit('dragover', this.sound);
+		},
+		dragstart: function(event) {
+			event.dataTransfer.dropEffect = 'move';
+		    event.dataTransfer.effectAllowed = 'move';
+		    event.dataTransfer.setData("text", 'coucou');
+		    this.dragging = true;
+		},
+		dragend: function(event) {
+			this.$emit('dragend', this.sound);
+			this.dragging = false;
+		},
+		dragleave: function(event) {
+			if (this.dragging) {
+				this.$emit('dragstart', this.sound);
+			}
 		}
 	},
 	template: `
-<div :class="{'sound-edit': edit}" v-mouse:1000.click="click" v-mouse:1000.up="edition" v-mouse:1000.down="editing" @mouseleave="edit=false;">
+<div :class="{'sound-edit': edit}"
+	v-mouse:1000.click="click" v-mouse:1000.up="edition"
+	v-mouse:1000.down="editing"
+	@mouseleave="edit=false;"
+
+	@dragstart="dragstart"
+	@dragend.prevent="dragend"
+	@drop.prevent="drop"
+	@dragover.prevent="dragover"
+	@dragleave.prevent="dragleave"
+
+	draggable="draggable"
+>
 	<div v-if="edit">Edit ?</div>
 	<header>{{sound.name}}</header>
 </div>
 	`
 });
 
+Vue.component('sound-drag', {
+	extends: box,
+	template: `
+<div class="sound-drag"
+	@dragover.prevent="dragover"
+	@drop.prevent="drop"
+>
+	<header>Move sound here</header>
+</div>
+	`
+});
+
 Vue.component('add-sound-box', {
+	extends: box,
 	methods: {
 		click: function() {
 			this.$emit('click');
 		}
 	},
 	template: `
-<div @click="click">
+<div
+	@click="click"
+	@dragover.prevent="dragover"
+	@drop.prevent="drop"
+>
 	<header class="large-icon">+</header>
-</div>
-	`
-});
-
-Vue.component('sound-test', {
-	extends: box,
-	props: {
-		message: String
-	},
-	methods: {
-		editing: function() {
-			console.log('coucou')
-		}
-	},
-	template: `
-<div :class="{'sound-edit': edit}" v-mouse:1000.click="click" v-mouse:1000.up="edition" v-mouse:1000.down="editing" @mouseleave="edit=false;">
-	<div v-if="edit">Edit ?</div>
-	<header>{{message}}!!! {{sound.name}}</header>
 </div>
 	`
 });
